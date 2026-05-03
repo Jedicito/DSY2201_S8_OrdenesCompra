@@ -1,0 +1,7 @@
+s8\dsy2201\ordenescompra\dto\OrdenCompraResponseDTO.class
+s8\dsy2201\ordenescompra\dto\OrdenCompraRequestDTO.class
+s8\dsy2201\ordenescompra\repositorio\OrdenCompraRepository.class
+s8\dsy2201\ordenescompra\controlador\OrdenCompraController.class
+s8\dsy2201\ordenescompra\servicio\OrdenCompraService.class
+s8\dsy2201\ordenescompra\modelo\OrdenCompra.class
+s8\dsy2201\ordenescompra\OrdenesCompraApplication.class
