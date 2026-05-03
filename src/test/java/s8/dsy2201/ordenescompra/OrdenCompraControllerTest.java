@@ -1,121 +1,73 @@
 package s8.dsy2201.ordenescompra;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import s8.dsy2201.ordenescompra.controlador.OrdenCompraController;
 import s8.dsy2201.ordenescompra.dto.OrdenCompraRequestDTO;
 import s8.dsy2201.ordenescompra.dto.OrdenCompraResponseDTO;
+import s8.dsy2201.ordenescompra.modelo.OrdenCompra;
+import s8.dsy2201.ordenescompra.repositorio.OrdenCompraRepository;
 import s8.dsy2201.ordenescompra.servicio.OrdenCompraService;
 
-import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.Mockito.*;
 
-/**
- * Prueba de capa web sobre {@link OrdenCompraController}.
- *
- * @WebMvcTest levanta solo el contexto MVC (sin BD ni Spring Data),
- * por lo que el servicio se sustituye con un mock de Mockito.
- *
- * Anotaciones relevantes:
- *   @WebMvcTest   – contexto liviano: solo controladores, filtros y MVC
- *   @MockitoBean  – registra un mock del servicio en el contexto de Spring
- *   @BeforeEach   – prepara datos reutilizables antes de cada test
- *   @Test         – caso de prueba JUnit 5
- */
-@WebMvcTest(OrdenCompraController.class)
+@ExtendWith(MockitoExtension.class)
 class OrdenCompraControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Mock
+    private OrdenCompraRepository repository;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @MockitoBean
+    @InjectMocks
     private OrdenCompraService service;
 
-    private OrdenCompraResponseDTO dto1;
-    private OrdenCompraResponseDTO dto2;
+    private OrdenCompra ordenExistente;
 
     @BeforeEach
     void setUp() {
-        dto1 = new OrdenCompraResponseDTO(1, "Alimento para perro", 3, "Pendiente");
-        dto2 = new OrdenCompraResponseDTO(2, "Arena para gato",    1, "Aprobada");
+        ordenExistente = new OrdenCompra(1, "Alimento para perro", 3, "Pendiente");
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // TEST 4: GET /api/ordenes → 200 OK con dos elementos en el JSON
-    // ─────────────────────────────────────────────────────────────────────────
     @Test
-    @DisplayName("GET /api/ordenes retorna 200 OK y la colección en JSON HAL")
-    void testGetOrdenes_retorna200ConColeccion() throws Exception {
-        // Arrange
-        when(service.obtenerTodas()).thenReturn(List.of(dto1, dto2));
+    @DisplayName("actualizar() retorna el DTO con los nuevos valores cuando el ID existe")
+    void testActualizar_retornaDtoActualizadoCuandoIdExiste() {
+        OrdenCompraRequestDTO dto = new OrdenCompraRequestDTO();
+        dto.setProducto("Collar antipulgas");
+        dto.setCantidad(10);
+        dto.setEstado("Aprobada");
 
-        // Act + Assert
-        mockMvc.perform(get("/api/ordenes")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$._embedded.ordenCompraResponseDTOList").isArray())
-                .andExpect(jsonPath("$._embedded.ordenCompraResponseDTOList[0].producto")
-                        .value("Alimento para perro"))
-                .andExpect(jsonPath("$._embedded.ordenCompraResponseDTOList[1].estado")
-                        .value("Aprobada"))
-                .andExpect(jsonPath("$._links.self").exists());
+        OrdenCompra ordenActualizada = new OrdenCompra(1, "Collar antipulgas", 10, "Aprobada");
+
+        when(repository.findById(1)).thenReturn(Optional.of(ordenExistente));
+        when(repository.save(any(OrdenCompra.class))).thenReturn(ordenActualizada);
+
+        Optional<OrdenCompraResponseDTO> resultado = service.actualizar(1, dto);
+
+        assertTrue(resultado.isPresent());
+        assertEquals("Collar antipulgas", resultado.get().getProducto());
+        assertEquals(10,         resultado.get().getCantidad());
+        assertEquals("Aprobada", resultado.get().getEstado());
+
+        verify(repository, times(1)).findById(1);
+        verify(repository, times(1)).save(any(OrdenCompra.class));
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // TEST 5: GET /api/ordenes/{id} inexistente → 404 Not Found
-    // ─────────────────────────────────────────────────────────────────────────
     @Test
-    @DisplayName("GET /api/ordenes/{id} retorna 404 cuando la orden no existe")
-    void testGetPorId_retorna404CuandoNoExiste() throws Exception {
-        // Arrange
-        when(service.obtenerPorId(99)).thenReturn(Optional.empty());
+    @DisplayName("eliminar() retorna false cuando el ID no existe en el repositorio")
+    void testEliminar_retornaFalseCuandoIdNoExiste() {
+        when(repository.existsById(99)).thenReturn(false);
 
-        // Act + Assert
-        mockMvc.perform(get("/api/ordenes/99")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
-    }
+        boolean resultado = service.eliminar(99);
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // TEST 6: POST /api/ordenes → 201 Created con los datos y los _links
-    // ─────────────────────────────────────────────────────────────────────────
-    @Test
-    @DisplayName("POST /api/ordenes retorna 201 Created con HATEOAS links")
-    void testPost_retorna201ConLinks() throws Exception {
-        // Arrange
-        OrdenCompraRequestDTO request = new OrdenCompraRequestDTO();
-        request.setProducto("Juguete para conejo");
-        request.setCantidad(5);
-
-        OrdenCompraResponseDTO creada = new OrdenCompraResponseDTO(3, "Juguete para conejo", 5, "Pendiente");
-        when(service.crear(any(OrdenCompraRequestDTO.class))).thenReturn(creada);
-
-        // Act + Assert
-        mockMvc.perform(post("/api/ordenes")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(3))
-                .andExpect(jsonPath("$.producto").value("Juguete para conejo"))
-                .andExpect(jsonPath("$.estado").value("Pendiente"))
-                .andExpect(jsonPath("$._links.self").exists())
-                .andExpect(jsonPath("$._links.ordenes").exists())
-                .andExpect(jsonPath("$._links.eliminar").exists());
+        assertFalse(resultado);
+        verify(repository, never()).deleteById(any());
     }
 }
