@@ -1,0 +1,36 @@
+# --- Maven ---
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# --- Compilados Java ---
+*.class
+*.jar
+*.war
+*.ear
+
+# --- IDEs (VS Code, IntelliJ, Eclipse) ---
+.idea/
+*.iml
+*.iws
+.classpath
+.project
+.settings/
+.vscode/
+bin/
+.nb-gradle/
+
+# --- Configuración Personalizada ---
+# Protege tus credenciales locales de Oracle
+application-local.properties
+
+# --- Sistema Operativo ---
+.DS_Store
+Thumbs.db
